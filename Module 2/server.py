@@ -20,44 +20,60 @@ print 'Socket now listening'
 
 
 def clientthread(conn):
-    conn.send("Welcome to the server!\nTo Quit any time, enter 'quit()' without quotes.\nEnter NAME of the person followed by ':' and then type your msg!")
-    j = -1
+    conn.send("Welcome to the server!\nTo Quit any time, enter 'quit()' without quotes."
+              "\nEnter the name of person followed by a ':' and then your messsage to send i.e. X:Message")
     while 1:
-        k = -1
-        for x in range(len(arr)):
-            if arr[x]['conn'] == conn:
-                j = x
-                break
-        data = conn.recv(1024)
-        if data == 'quit()':
-            BroadcastAbsence(arr[j])
-            print 'Disconnected with ' + arr[j]['adress'][0] + ':' + str(arr[j]['adress'][0])
-            del arr[j]
-            break
-        else:
-            k=-1
-            to, reply = data.split(':', 1)
-            print to
+        try:
+            data = conn.recv(1024)
             for x in range(len(arr)):
-                print arr[x]['name']
-                if to==arr[x]['name']:
-                    k=x
+                if arr[x]['conn'] == conn:
+                    j = x
                     break
-            if k>-1:
-                arr[k]['conn'].send(to+':'+reply)
+            if data == 'quit()':
+                BroadcastAbsence(arr[j])
+                print 'Disconnected with ' + arr[j]['adress'][0] + ':' + str(arr[j]['adress'][0])
+                del arr[j]
+                break
             else:
-                arr[j]['conn'].send("The user isn't currently available OR there's a mistake in name. Try again!!\n")
+                k = -1
+                try:
+                    to, reply = data.split(':', 1)
+                    for x in range(len(arr)):
+                        if to == arr[x]['name']:
+                            k = x
+                            break
+                    if k > -1:
+                        arr[k]['conn'].send("Person " + arr[j]['name'] + ':' + reply)
+                    else:
+                        arr[j]['conn'].send("The user isn't currently available OR"
+                                            " there's a mistake in name. Try again!!\n")
+                except ValueError:
+                    conn.send("\nWrong Format Message. Try again!\n")
+                    continue
+        except socket.error as error:
+            j = -1
+            for x in range(len(arr)):
+                if arr[x]['conn'] == conn:
+                    j = x
+                    var = arr[j]
+                    break
+            if j >= -1:
+                del arr[j]
+                BroadcastAbsence(var)
+                print 'Disconnected with ' + var['adress'][0] + ':' + str(var['adress'][0])
+                break
+            else:
+                break
     conn.close()
 
 
 def ListAllUser(conn):
     k = 1
-    conn.send("\n-----Following Users are connected with server------\n")
+    conn.send("\n-------Following Users are connected with server------\n")
     loop = len(arr)
     while loop:
         loop -= 1
-        if arr[loop]['conn'] != conn:
-            conn.send(str(k) + '-' + arr[loop]['name'] + "\n")
+        conn.send(str(k) + '-' + arr[loop]['name'] + "\n")
     conn.send("------------------------------------------------------\n")
     return
 
@@ -90,11 +106,9 @@ while 1:
     temp['conn'] = conn
     temp['adress'] = addr
     temp['name'] = conn.recv(200)
-    #temp['link'] = conn.recv(200)
     BroadcastPresence(temp)
-    arr += [temp]
     ListAllUser(conn)
+    arr += [temp]
     print 'Connected with ' + addr[0] + ':' + str(addr[1])
     start_new_thread(clientthread, (conn,))
-    i += 1
 s.close()
